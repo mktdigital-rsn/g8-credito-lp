@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+
+  /* Paleta G8 (theme-g8 do internet banking) */
+  --color-brand-accent: #ff7711;
+  --color-brand-accent-hover: #ee6600;
+  --color-brand-accent-light: rgba(255, 119, 17, 0.1);
+  --color-brand-secondary: #ffaa00;
+  --color-ink: #0c0a09;
+  --color-ink-soft: #18181b;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white text-ink font-sans antialiased;
+  }
+  button,
+  a,
+  select,
+  [role="button"] {
+    cursor: pointer;
+  }
+  ::selection {
+    background: rgba(255, 119, 17, 0.25);
+  }
+}
