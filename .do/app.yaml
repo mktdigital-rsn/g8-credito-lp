@@ -1,0 +1,34 @@
+name: g8-credito-lp
+region: nyc
+services:
+  - name: web
+    github:
+      repo: mktdigital-rsn/g8-credito-lp
+      branch: main
+      deploy_on_push: true
+    source_dir: /
+    environment_slug: node-js
+    build_command: npm run build:app-platform
+    run_command: npm run start:app-platform
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+    health_check:
+      http_path: /
+    envs:
+      - key: NODE_ENV
+        scope: RUN_TIME
+        value: production
+      - key: HOSTNAME
+        scope: RUN_TIME
+        value: 0.0.0.0
+      - key: PORT
+        scope: RUN_TIME
+        value: "8080"
+ingress:
+  rules:
+    - component:
+        name: web
+      match:
+        path:
+          prefix: /

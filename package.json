@@ -2,9 +2,14 @@
   "name": "g8-credito-lp",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:app-platform": "npm run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
+    "start:app-platform": "node .next/standalone/server.js",
     "start": "next start",
     "lint": "eslint"
   },
