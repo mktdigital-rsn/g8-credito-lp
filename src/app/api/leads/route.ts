@@ -1,49 +1,129 @@
 import { z } from "zod";
 import { leadSchema, onlyDigits } from "@/lib/lead";
 
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+const ALLOWED_DOCUMENT_TYPES = new Set(["image/jpeg", "image/png", "application/pdf"]);
+
+type PresignedUpload = { slot: string; key: string; url: string };
+
+function jsonError(message: string, status: number) {
+  return Response.json({ success: false, message }, { status });
+}
+
+function extensionFor(file: File) {
+  switch (file.type) {
+    case "image/png": return "png";
+    case "application/pdf": return "pdf";
+    default: return "jpeg";
+  }
+}
+
 export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ success: false, message: "Requisição inválida." }, { status: 400 });
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_DOCUMENT_BYTES + 128 * 1024) {
+    return jsonError("O arquivo deve ter no máximo 10 MB.", 413);
   }
 
-  const parsed = leadSchema.safeParse(body);
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return jsonError("Requisição inválida.", 400);
+  }
+
+  const parsed = leadSchema.safeParse({
+    amount: Number(formData.get("amount")),
+    nome: formData.get("nome"),
+    cpf: formData.get("cpf"),
+    telefone: formData.get("telefone"),
+    email: formData.get("email"),
+    perfil: formData.get("perfil"),
+    banco: formData.get("banco"),
+    canal: formData.get("canal"),
+    documentKind: formData.get("documentKind"),
+    aceite: formData.get("aceite") === "true",
+  });
   if (!parsed.success) {
     return Response.json(
-      { success: false, message: "Dados inválidos.", errors: z.flattenError(parsed.error).fieldErrors },
+      { success: false, message: "Confira os dados do formulário.", errors: z.flattenError(parsed.error).fieldErrors },
       { status: 422 }
     );
   }
 
-  const lead = {
-    ...parsed.data,
-    cpf: onlyDigits(parsed.data.cpf),
-    telefone: onlyDigits(parsed.data.telefone),
-    createdAt: new Date().toISOString(),
-  };
-
-  // Encaminha o lead para o backend quando LEADS_API_URL estiver configurada.
-  const target = process.env.LEADS_API_URL;
-  if (target) {
-    try {
-      const res = await fetch(target, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(lead),
-      });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-    } catch (err) {
-      console.error("[leads] falha ao encaminhar lead:", err);
-      return Response.json(
-        { success: false, message: "Não foi possível enviar sua solicitação. Tente novamente." },
-        { status: 502 }
-      );
-    }
-  } else {
-    console.info("[leads] novo lead (LEADS_API_URL não configurada):", { ...lead, cpf: "***" });
+  const file = formData.get("document");
+  if (!(file instanceof File) || file.size === 0) {
+    return jsonError("Anexe uma imagem ou PDF do seu documento.", 422);
+  }
+  if (!ALLOWED_DOCUMENT_TYPES.has(file.type)) {
+    return jsonError("Envie o documento como JPG, PNG ou PDF.", 422);
+  }
+  if (file.size > MAX_DOCUMENT_BYTES) {
+    return jsonError("O arquivo deve ter no máximo 10 MB.", 422);
   }
 
-  return Response.json({ success: true, message: "Solicitação recebida." });
+  const backendBaseUrl = process.env.CREDIT_APPLICATION_API_BASE_URL?.replace(/\/+$/, "");
+  const accessKey = process.env.CREDIT_APPLICATION_PUBLIC_ACCESS_KEY;
+  if (!backendBaseUrl || !accessKey) {
+    return jsonError("O envio está temporariamente indisponível.", 503);
+  }
+
+  try {
+    // Uses the backend's existing public PF presigned-upload route.
+    const presignedResponse = await fetch(
+      `${backendBaseUrl}/api/auth/v2/cadastrarUsuarioPf/presigned-urls`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploads: [{ slot: "credit-application-document", filename: `document.${extensionFor(file)}` }],
+        }),
+        cache: "no-store",
+      }
+    );
+    if (!presignedResponse.ok) {
+      console.error("[credit-application] presigned upload request failed:", presignedResponse.status);
+      return jsonError("Não foi possível preparar o envio do documento.", 502);
+    }
+
+    const presigned = (await presignedResponse.json()) as { uploads?: PresignedUpload[] };
+    const upload = presigned.uploads?.[0];
+    if (!upload?.key || !upload.url) {
+      console.error("[credit-application] backend returned an invalid upload response");
+      return jsonError("Não foi possível preparar o envio do documento.", 502);
+    }
+
+    const uploadResponse = await fetch(upload.url, { method: "PUT", body: file });
+    if (!uploadResponse.ok) {
+      console.error("[credit-application] document upload failed:", uploadResponse.status);
+      return jsonError("Não foi possível enviar o documento. Tente novamente.", 502);
+    }
+
+    const applicationResponse = await fetch(`${backendBaseUrl}/api/carta-credito/publica`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Credit-Application-Key": accessKey,
+      },
+      body: JSON.stringify({
+        amount: parsed.data.amount,
+        name: parsed.data.nome,
+        taxNumber: onlyDigits(parsed.data.cpf),
+        email: parsed.data.email,
+        phoneNumber: onlyDigits(parsed.data.telefone),
+        userKind: "PF",
+        documents: [{ kind: parsed.data.documentKind, reference: upload.key }],
+      }),
+      cache: "no-store",
+    });
+
+    if (!applicationResponse.ok) {
+      console.error("[credit-application] backend rejected application:", applicationResponse.status);
+      return jsonError("Não foi possível registrar sua solicitação. Confira os dados e tente novamente.", 502);
+    }
+
+    return Response.json({ success: true, message: "Solicitação recebida." }, { status: 201 });
+  } catch (error) {
+    console.error("[credit-application] request failed:", error instanceof Error ? error.message : "unknown error");
+    return jsonError("Não foi possível enviar sua solicitação. Tente novamente.", 502);
+  }
 }

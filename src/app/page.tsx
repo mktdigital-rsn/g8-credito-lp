@@ -53,7 +53,7 @@ const audience = [
 ];
 
 const steps = [
-  { n: "01", title: "Preencha o formulário", text: "Informe seus dados básicos em menos de 2 minutos." },
+  { n: "01", title: "Preencha o formulário", text: "Informe seus dados e envie um documento de identificação." },
   { n: "02", title: "Análise do seu perfil", text: "Nosso time avalia sua proposta e as melhores condições." },
   { n: "03", title: "Receba o dinheiro", text: "Contrato aprovado, crédito liberado direto na sua conta." },
 ];

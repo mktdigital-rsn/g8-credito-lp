@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+export const DOCUMENT_KINDS = [
+  { value: "RG_FRENTE", label: "RG - frente" },
+  { value: "CNH_FRENTE", label: "CNH" },
+] as const;
+
 export const PERFIS = [
   "Aposentado",
   "Assalariado",
@@ -68,6 +73,9 @@ export function maskPhone(value: string) {
 }
 
 export const leadSchema = z.object({
+  amount: z.number({ error: "Informe o valor desejado" })
+    .min(0.01, "Informe um valor maior que zero")
+    .max(Number.MAX_SAFE_INTEGER, "Valor acima do limite permitido"),
   nome: z
     .string()
     .trim()
@@ -81,6 +89,7 @@ export const leadSchema = z.object({
   perfil: z.enum(PERFIS, { error: "Selecione seu perfil" }),
   banco: z.enum(BANCOS, { error: "Selecione o banco" }),
   canal: z.enum(CANAIS, { error: "Selecione uma opção" }),
+  documentKind: z.enum(["RG_FRENTE", "CNH_FRENTE"], { error: "Selecione o documento" }),
   aceite: z.literal(true, { error: "É necessário aceitar para continuar" }),
 });
 

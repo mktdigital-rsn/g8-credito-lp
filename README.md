@@ -8,15 +8,23 @@ npm install
 npm run dev
 ```
 
-## Envio de leads
+## Solicitação de crédito
 
-O formulário faz `POST /api/leads` (`src/app/api/leads/route.ts`), que valida os dados com zod
-(`src/lib/lead.ts`). Se `LEADS_API_URL` estiver definida, o lead é repassado para essa URL;
-caso contrário, apenas é registrado no log do servidor.
+O formulário faz `POST /api/leads` (`src/app/api/leads/route.ts`) com os dados e o documento de
+identificação. A rota valida o formulário, solicita uma URL pré-assinada ao endpoint PF existente,
+envia o arquivo para o armazenamento e cria a solicitação em `/api/carta-credito/publica`.
 
 ```
-LEADS_API_URL=https://sua-api/leads
+CREDIT_APPLICATION_API_BASE_URL=https://sua-api
+CREDIT_APPLICATION_PUBLIC_ACCESS_KEY=<chave configurada no backend>
 ```
+
+Configure as duas variáveis no ambiente de runtime do servidor Next.js como secrets. A URL é a
+origem do backend, sem o sufixo `/api`. O formulário aceita RG frente ou CNH em JPG, PNG ou PDF,
+com até 10 MB. O arquivo é enviado usando o endpoint existente
+`/api/auth/v2/cadastrarUsuarioPf/presigned-urls` e a chave retornada é enviada como referência do
+documento na solicitação de crédito. Perfil, banco e canal de origem continuam no formulário, mas
+o endpoint atual de carta de crédito não armazena esses três campos.
 
 ## DigitalOcean App Platform
 
@@ -29,9 +37,8 @@ commits na branch `main` de `mktdigital-rsn/g8-credito-lp`.
 2. Crie uma aplicação no App Platform usando a especificação `.do/app.yaml`.
    Revise a região (`nyc`) e o tamanho da instância (`apps-s-1vcpu-1gb`) antes de criar
    o serviço pago. Para um fork, ajuste também `github.repo` e `github.branch`.
-3. Configure `LEADS_API_URL` nas variáveis de ambiente do componente `web`, com escopo
-   **Run Time** (e tipo **Secret** se a URL contiver credenciais). Sem essa variável,
-   os leads serão apenas registrados nos logs, conforme o comportamento atual.
+3. Configure `CREDIT_APPLICATION_API_BASE_URL` e `CREDIT_APPLICATION_PUBLIC_ACCESS_KEY` nas
+   variáveis de ambiente do componente `web`, com escopo **Run Time** e tipo **Secret**.
 
 Com o `doctl` instalado, autenticado e com acesso ao repositório:
 

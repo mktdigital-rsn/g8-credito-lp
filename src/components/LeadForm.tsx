@@ -40,16 +40,9 @@ function SelectField({
             "appearance-none pr-10 invalid:text-neutral-400",
             error ? "border-red-400" : "border-neutral-200"
           )}
-          required
         >
-          <option value="" disabled>
-            {placeholder}
-          </option>
-          {options.map((opt) => (
-            <option key={opt} value={opt} className="text-ink">
-              {opt}
-            </option>
-          ))}
+          <option value="" disabled>{placeholder}</option>
+          {options.map((option) => <option key={option} value={option} className="text-ink">{option}</option>)}
         </select>
         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
       </div>
@@ -60,6 +53,8 @@ function SelectField({
 
 export default function LeadForm() {
   const [sent, setSent] = useState(false);
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentError, setDocumentError] = useState<string>();
   const {
     register,
     handleSubmit,
@@ -68,16 +63,33 @@ export default function LeadForm() {
   } = useForm<LeadInput>({ resolver: zodResolver(leadSchema), mode: "onTouched" });
 
   const onSubmit = async (data: LeadInput) => {
+    setDocumentError(undefined);
+    if (!documentFile) {
+      setDocumentError("Anexe uma imagem ou PDF do seu RG ou CNH.");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "application/pdf"].includes(documentFile.type)) {
+      setDocumentError("Envie um arquivo JPG, PNG ou PDF.");
+      return;
+    }
+    if (documentFile.size > 10 * 1024 * 1024) {
+      setDocumentError("O arquivo deve ter no máximo 10 MB.");
+      return;
+    }
+
     try {
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => formData.append(key, String(value)));
+      formData.append("document", documentFile);
       const res = await fetch("/api/leads", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: formData,
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.message);
       setSent(true);
       reset();
+      setDocumentFile(null);
     } catch (err) {
       toast.error(
         err instanceof Error && err.message
@@ -111,9 +123,29 @@ export default function LeadForm() {
 
   const cpfReg = register("cpf");
   const phoneReg = register("telefone");
+  const amountReg = register("amount", { valueAsNumber: true });
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3">
+      <div>
+        <label htmlFor="amount" className="mb-1 ml-1 block text-xs font-bold text-neutral-500">
+          Valor desejado
+        </label>
+        <input
+          {...amountReg}
+          id="amount"
+          type="number"
+          min="0.01"
+          max={Number.MAX_SAFE_INTEGER}
+          step="0.01"
+          placeholder="Ex.: 5000,00"
+          inputMode="decimal"
+          aria-invalid={!!errors.amount}
+          className={cn(fieldBase, errors.amount ? "border-red-400" : "border-neutral-200")}
+        />
+        <FieldError message={errors.amount?.message} />
+      </div>
+
       <div>
         <input
           {...register("nome")}
@@ -187,6 +219,50 @@ export default function LeadForm() {
         registration={register("canal")}
         error={errors.canal?.message}
       />
+
+      <div>
+        <label htmlFor="documentKind" className="mb-1 ml-1 block text-xs font-bold text-neutral-500">
+          Documento de identificação
+        </label>
+        <div className="relative">
+          <select
+            {...register("documentKind")}
+            id="documentKind"
+            defaultValue=""
+            aria-invalid={!!errors.documentKind}
+            className={cn(
+              fieldBase,
+              "appearance-none pr-10 invalid:text-neutral-400",
+              errors.documentKind ? "border-red-400" : "border-neutral-200"
+            )}
+          >
+            <option value="" disabled>Selecione RG ou CNH</option>
+            <option value="RG_FRENTE">RG - frente</option>
+            <option value="CNH_FRENTE">CNH</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+        </div>
+        <FieldError message={errors.documentKind?.message} />
+      </div>
+
+      <div>
+        <label htmlFor="document" className="mb-1 ml-1 block text-xs font-bold text-neutral-500">
+          Foto ou PDF do documento
+        </label>
+        <input
+          id="document"
+          type="file"
+          accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
+          aria-invalid={!!documentError}
+          onChange={(event) => {
+            setDocumentFile(event.target.files?.[0] ?? null);
+            setDocumentError(undefined);
+          }}
+          className={cn(fieldBase, "py-2 text-sm", documentError ? "border-red-400" : "border-neutral-200")}
+        />
+        <p className="mt-1 ml-1 text-xs text-neutral-400">JPG, PNG ou PDF · até 10 MB</p>
+        <FieldError message={documentError} />
+      </div>
 
       <div className="pt-1">
         <label className="flex items-start gap-3 text-xs font-medium leading-relaxed text-neutral-500">
