@@ -41,8 +41,8 @@ commits na branch `main` de `mktdigital-rsn/g8-credito-lp`.
    o serviço pago. Para um fork, ajuste também `github.repo` e `github.branch`.
 3. Configure `CREDIT_APPLICATION_API_BASE_URL` no componente `web`, com escopo **Run Time**.
 
-Para confirmar qual versão está no ar, consulte `GET /api/deploy-info`. A resposta contém o marcador
-de release desta alteração em `America/Sao_Paulo`.
+Para confirmar qual versão está no ar, consulte `GET /api/deploy-info`. Cada build gera
+automaticamente o timestamp em `America/Sao_Paulo`, e a resposta não é armazenada em cache.
 
 Com o `doctl` instalado, autenticado e com acesso ao repositório:
 
