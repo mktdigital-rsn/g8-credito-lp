@@ -1,12 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, CheckCircle2, ChevronDown, Loader2, Lock } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, Loader2, Lock, Pencil } from "lucide-react";
 import { useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { brand } from "@/config/brand";
 import { BANCOS, CANAIS, PERFIS, leadSchema, maskCpf, maskPhone, type LeadInput } from "@/lib/lead";
+import { formatBRL, monthlyInstallment } from "@/lib/simulation";
 import { cn } from "@/lib/utils";
 
 const fieldBase =
@@ -51,7 +52,15 @@ function SelectField({
   );
 }
 
-export default function LeadForm() {
+export default function LeadForm({
+  amount,
+  term,
+  onEditSimulation,
+}: {
+  amount: number;
+  term: number;
+  onEditSimulation: () => void;
+}) {
   const [sent, setSent] = useState(false);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentError, setDocumentError] = useState<string>();
@@ -60,7 +69,11 @@ export default function LeadForm() {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<LeadInput>({ resolver: zodResolver(leadSchema), mode: "onTouched" });
+  } = useForm<LeadInput>({
+    resolver: zodResolver(leadSchema),
+    mode: "onTouched",
+    defaultValues: { amount },
+  });
 
   const onSubmit = async (data: LeadInput) => {
     setDocumentError(undefined);
@@ -88,7 +101,7 @@ export default function LeadForm() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.message);
       setSent(true);
-      reset();
+      reset({ amount });
       setDocumentFile(null);
     } catch (err) {
       toast.error(
@@ -112,10 +125,10 @@ export default function LeadForm() {
         </p>
         <button
           type="button"
-          onClick={() => setSent(false)}
+          onClick={onEditSimulation}
           className="mt-8 text-xs font-black uppercase tracking-widest text-brand-accent underline underline-offset-4"
         >
-          Fazer nova solicitação
+          Fazer nova simulação
         </button>
       </div>
     );
@@ -123,28 +136,25 @@ export default function LeadForm() {
 
   const cpfReg = register("cpf");
   const phoneReg = register("telefone");
-  const amountReg = register("amount", { valueAsNumber: true });
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3">
-      <div>
-        <label htmlFor="amount" className="mb-1 ml-1 block text-xs font-bold text-neutral-500">
-          Valor desejado
-        </label>
-        <input
-          {...amountReg}
-          id="amount"
-          type="number"
-          min="0.01"
-          max={Number.MAX_SAFE_INTEGER}
-          step="0.01"
-          placeholder="Ex.: 5000,00"
-          inputMode="decimal"
-          aria-invalid={!!errors.amount}
-          className={cn(fieldBase, errors.amount ? "border-red-400" : "border-neutral-200")}
-        />
-        <FieldError message={errors.amount?.message} />
+      <div className="flex items-center justify-between gap-3 rounded-[2px] bg-brand-accent-light px-4 py-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-widest text-neutral-500">Sua simulação</p>
+          <p className="font-black">
+            {formatBRL(amount)} em {term}x de{" "}
+            <span className="text-brand-accent">{formatBRL(monthlyInstallment(amount, term))}</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onEditSimulation}
+          className="flex shrink-0 items-center gap-1 text-xs font-black uppercase tracking-widest text-brand-accent hover:underline"
+        >
+          <Pencil className="h-3.5 w-3.5" /> Alterar
+        </button>
       </div>
+      <FieldError message={errors.amount?.message} />
 
       <div>
         <input

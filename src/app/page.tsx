@@ -4,22 +4,23 @@ import {
   Banknote,
   CalendarClock,
   ChevronDown,
-  Clock,
-  CreditCard,
+  ClipboardList,
   Headphones,
   Landmark,
   Mail,
   Medal,
   Phone,
+  SearchCheck,
   ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
   Smartphone,
   UserRound,
   Users,
   Zap,
 } from "lucide-react";
 import Image from "next/image";
-import LeadForm from "@/components/LeadForm";
+import CreditApplication from "@/components/CreditApplication";
 import { brand } from "@/config/brand";
 
 const advantages = [
@@ -53,9 +54,10 @@ const audience = [
 ];
 
 const steps = [
-  { n: "01", title: "Preencha o formulário", text: "Informe seus dados e envie um documento de identificação." },
-  { n: "02", title: "Análise do seu perfil", text: "Nosso time avalia sua proposta e as melhores condições." },
-  { n: "03", title: "Receba o dinheiro", text: "Contrato aprovado, crédito liberado direto na sua conta." },
+  { icon: SlidersHorizontal, title: "Selecione o valor", text: "Escolha quanto precisa para o seu empréstimo." },
+  { icon: ClipboardList, title: "Preencha seus dados", text: "Informe suas informações de forma rápida e segura." },
+  { icon: SearchCheck, title: "Avaliação", text: "Analisamos seu pedido de crédito junto à instituição financeira." },
+  { icon: Banknote, title: "Depósito em conta", text: "Após a aprovação, o dinheiro cai na sua conta em poucas horas." },
 ];
 
 const faq = [
@@ -107,6 +109,7 @@ export default function Home() {
             <Image src={brand.logoOnDark} alt={`${brand.name} Logo`} width={120} height={50} priority className="h-10 w-auto" />
           </a>
           <nav className="hidden items-center gap-8 text-xs font-black uppercase tracking-widest text-white/70 md:flex">
+            <a href="#como-funciona" className="transition-colors hover:text-white">Como funciona</a>
             <a href="#vantagens" className="transition-colors hover:text-white">Vantagens</a>
             <a href="#quem-pode" className="transition-colors hover:text-white">Quem pode contratar</a>
             <a href="#faq" className="transition-colors hover:text-white">Dúvidas</a>
@@ -141,12 +144,12 @@ export default function Home() {
                 Empréstimo Pessoal
               </span>
               <h1 className="text-[clamp(2.4rem,6vw,4.25rem)] font-black leading-[1.02] tracking-tighter text-white">
-                Dinheiro na mão, <br />
-                <span className="italic text-brand-accent">sem burocracia.</span>
+                Chegou a hora de transformar seus planos{" "}
+                <span className="italic text-brand-accent">em realidade.</span>
               </h1>
               <p className="max-w-lg text-base font-medium leading-relaxed text-neutral-300 sm:text-lg">
-                Facilidade e agilidade para ter crédito com a segurança e a confiança da {brand.shortName}.
-                Contrate sem sair de casa, parcele em até <strong className="text-white">15 vezes</strong> e
+                Simule agora o seu empréstimo pessoal com a segurança e a confiança da {brand.shortName}.
+                Contrate sem sair de casa, parcele em até <strong className="text-white">48 vezes</strong> e
                 tenha até <strong className="text-white">45 dias</strong> para começar a pagar.*
               </p>
 
@@ -167,16 +170,39 @@ export default function Home() {
 
             <div id="formulario" className="scroll-mt-24">
               <div className="rounded-[2px] bg-white p-6 shadow-2xl shadow-black/40 sm:p-8">
-                <div className="mb-6 border-l-4 border-brand-accent pl-4">
-                  <h2 className="text-xl font-black leading-tight tracking-tight sm:text-2xl">
-                    Preencha o formulário e contrate o seu empréstimo.
-                  </h2>
-                  <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-neutral-400">
-                    Leva menos de 2 minutos
-                  </p>
-                </div>
-                <LeadForm />
+                <CreditApplication />
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* COMO FUNCIONA */}
+        <section id="como-funciona" className="scroll-mt-10 bg-white py-20 lg:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-[11px] font-black uppercase tracking-widest text-brand-accent">Passo a passo</p>
+              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+                Como funciona o Empréstimo {brand.shortName}
+              </h2>
+              <p className="mt-4 font-medium text-neutral-500">
+                Em poucos minutos, você solicita sua análise de empréstimo pessoal online:
+              </p>
+            </div>
+            <ol className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              {steps.map(({ icon: Icon, title, text }, i) => (
+                <li key={title} className="relative border-t-2 border-neutral-100 pt-8">
+                  <span className="absolute -top-[2px] left-0 h-[2px] w-16 bg-brand-accent" />
+                  <div className="flex items-center gap-3">
+                    <span className="text-5xl font-black tracking-tighter text-brand-accent/20">{i + 1}.</span>
+                    <Icon className="h-7 w-7 text-brand-accent" />
+                  </div>
+                  <h3 className="mt-3 text-xl font-black tracking-tight">{title}</h3>
+                  <p className="mt-2 font-medium text-neutral-500">{text}</p>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-14 flex justify-center">
+              <Cta />
             </div>
           </div>
         </section>
@@ -276,41 +302,6 @@ export default function Home() {
             </p>
             <div className="mt-10 flex justify-center">
               <Cta />
-            </div>
-          </div>
-        </section>
-
-        {/* COMO FUNCIONA */}
-        <section className="bg-white py-20 lg:py-28">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="text-[11px] font-black uppercase tracking-widest text-brand-accent">Como funciona</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Rápido, fácil e sem burocracia</h2>
-            </div>
-            <div className="mt-14 grid gap-8 md:grid-cols-3">
-              {steps.map((s) => (
-                <div key={s.n} className="relative border-t-2 border-neutral-100 pt-8">
-                  <span className="absolute -top-[2px] left-0 h-[2px] w-16 bg-brand-accent" />
-                  <span className="text-5xl font-black tracking-tighter text-brand-accent/20">{s.n}</span>
-                  <h3 className="mt-2 text-xl font-black tracking-tight">{s.title}</h3>
-                  <p className="mt-2 font-medium text-neutral-500">{s.text}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-14 grid gap-5 md:grid-cols-3">
-              {[
-                { icon: CreditCard, title: "Até 15 parcelas", text: "Prazo estendido para caber no seu orçamento." },
-                { icon: Clock, title: "Dinheiro em até 24h", text: "Crédito na sua conta após a aprovação.*" },
-                { icon: ShieldCheck, title: "Segurança G8", text: "Seus dados protegidos com criptografia." },
-              ].map(({ icon: Icon, title, text }) => (
-                <div key={title} className="flex items-start gap-4 rounded-[2px] bg-neutral-50 p-6">
-                  <Icon className="h-6 w-6 shrink-0 text-brand-accent" />
-                  <div>
-                    <h3 className="font-black">{title}</h3>
-                    <p className="mt-1 text-sm font-medium text-neutral-500">{text}</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </section>
