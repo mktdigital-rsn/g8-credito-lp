@@ -89,7 +89,6 @@ export async function POST(request: Request) {
   }
 
   const backendBaseUrl = process.env.CREDIT_APPLICATION_API_BASE_URL?.replace(/\/+$/, "");
-  const accessKey = process.env.CREDIT_APPLICATION_PUBLIC_ACCESS_KEY;
   if (!backendBaseUrl) {
     return jsonError("O envio está temporariamente indisponível.", 503);
   }
@@ -128,10 +127,8 @@ export async function POST(request: Request) {
 
     const applicationResponse = await fetchUpstream("application", `${backendBaseUrl}/api/carta-credito/publica`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(accessKey ? { "X-Credit-Application-Key": accessKey } : {}),
-      },
+      // Temporary while the backend access-key check is disabled; restore the header with auth.
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         amount: parsed.data.amount,
         name: parsed.data.nome,
