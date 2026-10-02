@@ -16,11 +16,13 @@ envia o arquivo para o armazenamento e cria a solicitação em `/api/carta-credi
 
 ```
 CREDIT_APPLICATION_API_BASE_URL=https://sua-api
-CREDIT_APPLICATION_PUBLIC_ACCESS_KEY=<chave configurada no backend>
+CREDIT_APPLICATION_PUBLIC_ACCESS_KEY=<chave opcional; usada quando configurada>
 ```
 
-Configure as duas variáveis no ambiente de runtime do servidor Next.js como secrets. A URL é a
-origem do backend, sem o sufixo `/api`. O formulário aceita RG frente ou CNH em JPG, PNG ou PDF,
+Configure `CREDIT_APPLICATION_API_BASE_URL` no ambiente de runtime do servidor Next.js. A chave é
+opcional enquanto a verificação estiver desabilitada no backend; se configurada, ela continua sendo
+enviada para facilitar a reativação da verificação. A URL é a origem do backend, sem o sufixo `/api`.
+O formulário aceita RG frente ou CNH em JPG, PNG ou PDF,
 com até 10 MB. O arquivo é enviado usando o endpoint existente
 `/api/auth/v2/cadastrarUsuarioPf/presigned-urls` e a chave retornada é enviada como referência do
 documento na solicitação de crédito. Perfil, banco e canal de origem continuam no formulário, mas
@@ -37,8 +39,12 @@ commits na branch `main` de `mktdigital-rsn/g8-credito-lp`.
 2. Crie uma aplicação no App Platform usando a especificação `.do/app.yaml`.
    Revise a região (`nyc`) e o tamanho da instância (`apps-s-1vcpu-1gb`) antes de criar
    o serviço pago. Para um fork, ajuste também `github.repo` e `github.branch`.
-3. Configure `CREDIT_APPLICATION_API_BASE_URL` e `CREDIT_APPLICATION_PUBLIC_ACCESS_KEY` nas
-   variáveis de ambiente do componente `web`, com escopo **Run Time** e tipo **Secret**.
+3. Configure `CREDIT_APPLICATION_API_BASE_URL` no componente `web`, com escopo **Run Time**. A
+   `CREDIT_APPLICATION_PUBLIC_ACCESS_KEY` é opcional enquanto a verificação estiver desabilitada no
+   backend; se configurada, use o escopo **Run Time** e tipo **Secret**.
+
+Para confirmar qual versão está no ar, consulte `GET /api/deploy-info`. A resposta contém o marcador
+de release desta alteração em `America/Sao_Paulo`.
 
 Com o `doctl` instalado, autenticado e com acesso ao repositório:
 

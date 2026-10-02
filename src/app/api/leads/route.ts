@@ -3,6 +3,11 @@ import { leadSchema, onlyDigits } from "@/lib/lead";
 
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const ALLOWED_DOCUMENT_TYPES = new Set(["image/jpeg", "image/png", "application/pdf"]);
+const UPSTREAM_TIMEOUTS = {
+  presign: 10_000,
+  upload: 30_000,
+  application: 15_000,
+} as const;
 
 type PresignedUpload = { slot: string; key: string; url: string };
 
@@ -15,6 +20,28 @@ function extensionFor(file: File) {
     case "image/png": return "png";
     case "application/pdf": return "pdf";
     default: return "jpeg";
+  }
+}
+
+async function fetchUpstream(
+  stage: keyof typeof UPSTREAM_TIMEOUTS,
+  url: string,
+  init: RequestInit
+) {
+  const startedAt = Date.now();
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUTS[stage]),
+    });
+    console.info(`[credit-application] ${stage} completed in ${Date.now() - startedAt}ms (${response.status})`);
+    return response;
+  } catch (error) {
+    const timedOut = error instanceof Error && error.name === "TimeoutError";
+    console.error(
+      `[credit-application] ${stage} ${timedOut ? "timed out" : "failed"} after ${Date.now() - startedAt}ms`
+    );
+    throw error;
   }
 }
 
@@ -63,13 +90,14 @@ export async function POST(request: Request) {
 
   const backendBaseUrl = process.env.CREDIT_APPLICATION_API_BASE_URL?.replace(/\/+$/, "");
   const accessKey = process.env.CREDIT_APPLICATION_PUBLIC_ACCESS_KEY;
-  if (!backendBaseUrl || !accessKey) {
+  if (!backendBaseUrl) {
     return jsonError("O envio está temporariamente indisponível.", 503);
   }
 
   try {
     // Uses the backend's existing public PF presigned-upload route.
-    const presignedResponse = await fetch(
+    const presignedResponse = await fetchUpstream(
+      "presign",
       `${backendBaseUrl}/api/auth/v2/cadastrarUsuarioPf/presigned-urls`,
       {
         method: "POST",
@@ -92,17 +120,17 @@ export async function POST(request: Request) {
       return jsonError("Não foi possível preparar o envio do documento.", 502);
     }
 
-    const uploadResponse = await fetch(upload.url, { method: "PUT", body: file });
+    const uploadResponse = await fetchUpstream("upload", upload.url, { method: "PUT", body: file });
     if (!uploadResponse.ok) {
       console.error("[credit-application] document upload failed:", uploadResponse.status);
       return jsonError("Não foi possível enviar o documento. Tente novamente.", 502);
     }
 
-    const applicationResponse = await fetch(`${backendBaseUrl}/api/carta-credito/publica`, {
+    const applicationResponse = await fetchUpstream("application", `${backendBaseUrl}/api/carta-credito/publica`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Credit-Application-Key": accessKey,
+        ...(accessKey ? { "X-Credit-Application-Key": accessKey } : {}),
       },
       body: JSON.stringify({
         amount: parsed.data.amount,
